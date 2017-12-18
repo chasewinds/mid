@@ -1,10 +1,4 @@
-import os
-import numpy as np
-import tensorflow as tf
-from matplotlib import pyplot as plt
-
-TRAIN_DIR = '/Users/rubans/Desktop/cat_or_dog/train/'
-train_image_file_names = [TRAIN_DIR+i for i in os.listdir(TRAIN_DIR)][0:2000]
+train_image_file_names = [TRAIN_DIR+i for i in os.listdir(TRAIN_DIR)]#[0:2000]
 
 
 def decode_image(image_file_names, resize_func=None):
@@ -34,15 +28,28 @@ def decode_image(image_file_names, resize_func=None):
                 #print tf.type(images)
                 #print tf.shape(images)
 
-
         session.close()
-
+    shuffle(images)
     return images
 
 train_images = decode_image(train_image_file_names)
 for i in range(10):
     print (np.shape(train_images))
-
+    #print len(train_images)
+'''
 for i in range(3):
     plt.imshow(train_images[i])
     plt.show()
+    '''
+
+train_data = []
+validation_data = []
+test_data = []
+num_images = len(train_images)
+for i in range(num_images):
+    if i < 0.6*num_images:
+        train_data.append(train_images[i])
+    elif 0.6 * num_images <= i < 0.8 * num_images :
+        validation_data.append(train_images[i])
+    else:
+        test_data.append(train_images[i])
