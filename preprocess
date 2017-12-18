@@ -1,0 +1,48 @@
+import os
+import numpy as np
+import tensorflow as tf
+from matplotlib import pyplot as plt
+
+TRAIN_DIR = '/Users/rubans/Desktop/cat_or_dog/train/'
+train_image_file_names = [TRAIN_DIR+i for i in os.listdir(TRAIN_DIR)][0:2000]
+
+
+def decode_image(image_file_names, resize_func=None):
+    images = []
+
+    graph = tf.Graph()
+    with graph.as_default():
+
+        file_name = tf.placeholder(dtype=tf.string)
+        files = tf.read_file(file_name)
+        image = tf.image.decode_jpeg(files,channels=3) ##uint8
+        try:
+            #image = tf.cast(image,)
+            #shape = tf.tensor([224, 224], tf.int32)
+            image = tf.image.resize_images(image,[224,224],method=1)
+        except:
+            print 'resize fail'
+        if resize_func != None:
+            image = resize_func(image)
+
+    with tf.Session(graph=graph) as session:
+        session.run(tf.global_variables_initializer())
+        for i in range(len(image_file_names)):
+            images.append(session.run(image, feed_dict={file_name: image_file_names[i]}))
+            if (i + 1) % 1000 == 0:
+                print('Images processed: ', i + 1)
+                #print tf.type(images)
+                #print tf.shape(images)
+
+
+        session.close()
+
+    return images
+
+train_images = decode_image(train_image_file_names)
+for i in range(10):
+    print (np.shape(train_images))
+
+for i in range(3):
+    plt.imshow(train_images[i])
+    plt.show()
