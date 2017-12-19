@@ -1,0 +1,80 @@
+import tensorflow as tf
+
+from tensorflow.examples.tutorials.mnist import input_data
+mnist = input_data.read_data_sets('MNIST_data', one_hot=True)##the means of read_data_set??
+
+x = tf.placeholder(tf.float32,shape=[None,784])
+y_ = tf.placeholder(tf.float32,shape=[None,10])
+
+def wei_initial(shape):
+    initial = tf.truncated_normal(shape,stddev=1.0)##means?
+    ## tf.truncated_normal Outputs random values from a truncated normal distribution (value out of 2 sigmiod will be re-pick)
+    return tf.Variable(initial)
+
+def bias_initial(shape):
+    initial = tf.constant(0.1,shape= shape)
+    return tf.Variable(initial)
+
+def con2d(x,W):
+    return tf.nn.conv2d(x,W,strides=[1,1,1,1],padding='SAME')## padding is to chose which kinds if padding algrithm to use
+    ## x is input tensor of shape `[batch, in_height, in_width, in_channels]
+    ## W is  a filter / kernel tensor of shape `[filter_height, filter_width, in_channels, out_channels]`
+    ## output[b, i, j, k] = sum_{di, dj, q} input[b, strides[1] * i + di, strides[2] * j + dj, q] *filter[di, dj, q, k]
+
+
+def max_pool(x):
+    return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1],padding='SAME')
+    ## ksize: A list of ints that has length >= 4.  The size of the window for each dimension of the input tensor.
+    ## strides: A list of ints that has length >= 4.  The stride of the sliding window for each dimension of the input tensor.
+
+#impliment the first conv layer
+
+W1 = wei_initial([5,5,1,32])##what the relationship between weight and input image? See conv2d
+b1 = bias_initial([32])
+
+x_image = tf.reshape(x,[1,28,28,-1]) ##-1 be use to fill one demention altimaticly depend on the data.
+
+conv1 = tf.nn.relu(con2d(x_image,W1) + b1)
+pool1 = max_pool(conv1)
+
+#impliment the second conv layer
+
+W2 = wei_initial([5,5,32,64])##is the first conv layer turn the canel into 32?
+b2 = bias_initial([32])
+
+conv2 = tf.nn.relu(con2d(pool1,W2))
+pool2 = max_pool(conv2)
+
+W_fc1 = wei_initial([7*7*64,1024])##why 7*7*64
+b_fc1 = bias_initial([1024])
+pool2_flat = tf.reshape(pool2,[-1,7*7*64])
+fc1 = tf.nn.relu(tf.matmul(pool2_flat,W_fc1) + b_fc1)
+
+keep_prob = tf.placeholder(tf.float32)##why not constant?
+fc1_drop = tf.nn.dropout(fc1,keep_prob)
+
+W_fc2 = wei_initial([1024,10])
+b_fc2 = bias_initial([10])
+
+fc2 = tf.matmul(fc1_drop,W_fc2) + b_fc2
+
+cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels= y_,logits=fc2))
+train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)##what's the advantage of this optimizer?
+correct_prediction = tf.equal(tf.argmax(fc2,1),tf.argmax(y_,1))##compare the index of the prediction and label
+accrancy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32))
+
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    for i in range(2000):
+        batch = tf.train.next_batch(50)##the means of next_batch?
+        if  i % 100 == 0:
+            ## note that a eval method can be use if and only if the session is the defult session
+            ## you can call tf.get_default_session to get the defult session to make sure the session new is defult
+            train_accuracy = accrancy.eval(feed_dict={x:batch[0],
+                                                      y_:batch[1],keep_prob : 1.0})
+            print ("in the batch %d the train accuracy is %g" % (i,train_accuracy))
+        #train_step.run(feed_dict = {x:batch[0],y_:batch[1],keep_prob : 0.5})
+        train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+
+    print ("test accuracy in the whole mnist is %g" % accrancy.eval(feed_dict={x:mnist.test.images,
+                                                                               y_:mnist.test.labels,keep_prob : 1.0}))
